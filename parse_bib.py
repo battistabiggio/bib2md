@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Receives a Bibtex file and produces the markdown files for academic-hugo theme
@@ -7,6 +7,8 @@ Receives a Bibtex file and produces the markdown files for academic-hugo theme
 @contact: p.aristidou@ieee.org
 @date: 19-10-2017
 @version: alpha
+
+Edited by Cassio Batista on Jun 2019
 """
 
 import bibtexparser
@@ -102,7 +104,8 @@ if __name__ == "__main__":
         with open(inputfile, encoding="utf8") as bibtex_file:
             bibtex_str = bibtex_file.read()
     except EnvironmentError:  # parent of IOError, OSError *and* WindowsError where available
-        print('File '+inputfile+' not found or some other error...')
+        print('File "'+inputfile+'" not found or some other error...')
+        sys.exit(3)
 
     # It takes the type of the bibtex entry and maps to a corresponding category of the academic theme
     pubtype_dict = {
