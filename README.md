@@ -21,5 +21,6 @@ python parse_bib.py -i <inputfile>.bib
   
 ## Dependencies (Debian 9.9)
 ```
-sudo apt-get install python3-bibtexparser
+sudo -H pip3 install bibtexparser pybtex --upgrade
+
 ```
