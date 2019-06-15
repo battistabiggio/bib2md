@@ -49,15 +49,14 @@ if __name__ == "__main__":
         markdown = os.path.join(args.dir, '{}.md'.format(plainentry.key))
         endnote  = plainentry.text.render(plain_backend('utf8'))
         authors  = endnote.split('*')[0].split(',')
-        title    = endnote.split('*')[2].strip().rstrip()
-        #where    = endnote.split('*')[4].strip().rstrip()#.split(',')[0]
-        endnote  = endnote.replace('**'+title[0], '**'+title[0].capitalize())
-        if 'URL:' in endnote:
-            endnote = endnote.split('URL:')[0].rstrip()
+        title    = endnote.split('*')[2].strip().rstrip().capitalize()
+        tailnote = endnote.split('*')[4].strip().rstrip()
+        if 'URL:' in tailnote:
+            tailnote = tailnote.split('URL:')[0].rstrip()
         with open(markdown, 'w', encoding='utf8') as md:
             md.write(YAML_FM_DELIM + '\n')
-            md.write('endnote: "%s"\n' % endnote)
-            md.write('title: "%s"\n'   % title.capitalize())
+            md.write('tailnote: "%s"\n' % tailnote)
+            md.write('title: "%s"\n'    % title.capitalize())
             md.write('authors:\n')
             for author in authors:
                 md.write('- %s\n' % author.strip().rstrip().rstrip('.').lstrip('and '))
@@ -67,13 +66,16 @@ if __name__ == "__main__":
         with open(markdown, 'a', encoding='utf8') as md:
             md.write('pub_type: "%s"\n' % bibentry.type)
             for field, value in bibentry.fields.items():
-                if field != 'title':
+                if field != 'title' and field != 'url':
                     md.write('%s: "%s"\n' % (field, value))
+            md.write('date: "%s-01-01"\n' % bibentry.fields['year'])
             md.write(YAML_FM_DELIM + '\n\n')
 
-            md.write('# Abstract\n')
+            md.write('## Abstract\n')
             if 'abstract' in bibentry.fields:
+                md.write('```' + '\n')
                 md.write(bibentry.fields['abstract'] + '\n')
+                md.write('```' + '\n')
             else:
                 md.write('unavailable :(' + '\n')
             md.write('\n')
@@ -96,5 +98,7 @@ if __name__ == "__main__":
             bibtw.align_values = True # TOP CARALHO
             bibtw.indent = '    '
 
-            md.write('# BibTeX Citation\n')
+            md.write('## BibTeX Citation\n')
+            md.write('```bibtex' + '\n')
             md.write(bibtw.write(bibdb))
+            md.write('```' + '\n')
