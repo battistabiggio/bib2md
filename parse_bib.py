@@ -126,10 +126,7 @@ if __name__ == "__main__":
                     author_split = author_strip.split(',')
                     if len(author_split)==2:
                         author_strip = author_split[1].strip() + ' ' +author_split[0].strip()
-                    author_split = author_strip.split(' ')
-                    author_strip = author_split[0][0]+'. '+' '.join(map(str, author_split[1:]))
-                    authors_str = authors_str+ '"'+author_strip+'",'
-                the_file.write(authors_str[:-1]+']\n')
+                    the_file.write('- %s\n'  % author_strip)
             
             # Treating the publication type
             if 'ENTRYTYPE' in entry:
