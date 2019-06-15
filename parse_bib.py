@@ -95,13 +95,11 @@ if __name__ == "__main__":
     bib_database = bibtexparser.loads(bibtex_str)
     for entry in bib_database.entries:
         filenm = os.path.join(args.dir, '{}.md'.format(entry['ID']))
-        print(filenm)
         
         # TODO do something to avoid overwriting pubs but not repeating them as well
         with open(filenm, 'w', encoding="utf8") as the_file:
             the_file.write(YAML_FM_DELIM + '\n')
             the_file.write('title: "'+supetrim(entry['title'])+'"\n')
-            #print('Parsing ' + entry['ID'])
             
             if 'year' in entry:
                 date = entry['year']
@@ -151,12 +149,8 @@ if __name__ == "__main__":
             elif 'institution' in entry:
                 the_file.write('publication: "_'+supetrim(entry['institution'])+'_"\n')
                 
-            # I never put the short version. In the future I will use a dictionary like the authors to set the acronyms of important conferences and journals
-            the_file.write('publication_short: ""\n')
-            
             # Add the abstract if it's available in the bibtex
-            if 'abstract' in entry:
-                the_file.write('abstract: "'+supetrim(entry['abstract'])+'"\n')
+            # FIXME: needs to go to content
             
             # I add urls to the online version and the DOI
             if 'link' in entry:
@@ -172,8 +166,23 @@ if __name__ == "__main__":
             #    bibfile.write(writer.write(db))
 
             the_file.write(YAML_FM_DELIM + '\n\n')
-            
-            # Any notes are copied to the main document
-            if 'note' in entry:
-                strTemp = supetrim(entry['note'])
-                the_file.write(strTemp + "\n")
+
+            the_file.write('# Abstract\n')
+            if 'abstract' in entry:
+                the_file.write('abstract: %s\n' % supetrim(entry['abstract']))
+            else:
+                the_file.write('missing :(\n\n')
+
+            bibdb = BibDatabase()
+            bibdb.entries = [entry]
+            bibwriter = BibTexWriter()
+            bibwriter.align_values = True # TOP CARALHO
+            bibwriter.indent = '    '
+            the_file.write('# BibTeX Citation\n')
+            the_file.write(bibwriter.write(bibdb))
+
+
+            ## Any notes are copied to the main document
+            #if 'note' in entry:
+            #    strTemp = supetrim(entry['note'])
+            #    the_file.write(strTemp + "\n")
