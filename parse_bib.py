@@ -11,10 +11,15 @@ Receives a Bibtex file and produces the markdown files for academic-hugo theme
 Edited by Cassio Batista on Jun 2019
 """
 
+import sys
+import os
+import argparse
+
 import bibtexparser
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser.bibdatabase import BibDatabase
-import os, sys, getopt
+
+YAML_FM_DELIM = '---'
 
 def RepresentsInt(s):
     try:
@@ -81,30 +86,23 @@ def get_author_link(string):
 
     return out
 
-def main(argv):
-    inputfile = ''
-    try:
-        opts, args = getopt.getopt(argv, "hi:", ["ifile="])
-    except getopt.GetoptError:
-        print('parse_bib.py -i <inputfile>')
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print('parse_bib.py -i <inputfile>')
-            sys.exit()
-        elif opt in ("-i", "--ifile"):
-            inputfile = arg
-    return inputfile
-
 
 if __name__ == "__main__":
-    inputfile = main(sys.argv[1:])
+    parser = argparse.ArgumentParser(description='A script to parse a single '\
+                'BibTeX (.bib) file into Beautiful Hugo\'s publication '\
+                'Markdown (.md) files')
+    parser.add_argument('-i', '--input', metavar='BIB', type=str, 
+                help='input bibtex .bib file', required=True)
+    parser.add_argument('-d', '--dir', metavar='DIR', type=str, 
+                help='output dir to store .md files')
+    
+    args = parser.parse_args()
 
     try:
-        with open(inputfile, encoding="utf8") as bibtex_file:
+        with open(args.input, encoding="utf8") as bibtex_file:
             bibtex_str = bibtex_file.read()
     except EnvironmentError:  # parent of IOError, OSError *and* WindowsError where available
-        print('File "'+inputfile+'" not found or some other error...')
+        print('File "'+args.input+'" not found or some other error...')
         sys.exit(3)
 
     # It takes the type of the bibtex entry and maps to a corresponding category of the academic theme
@@ -124,14 +122,14 @@ if __name__ == "__main__":
     
     bib_database = bibtexparser.loads(bibtex_str)
     for entry in bib_database.entries:
-        filenm='content/publication/'+entry['ID']+'.md'
+        filenm = os.path.join(args.dir, '{}.md'.format(entry['ID']))
         
         # If the same publication exists, then skip the creation. I customize the .md files later, so I don't want them overwritten. Only new publications are created.
         if os.path.isfile(filenm):
             pass
         else:
             with open(filenm, 'w', encoding="utf8") as the_file:
-                the_file.write('+++\n')
+                the_file.write(YAML_FM_DELIM + '\n')
                 the_file.write('title = "'+supetrim(entry['title'])+'"\n')
                 #print('Parsing ' + entry['ID'])
                 
@@ -218,14 +216,14 @@ if __name__ == "__main__":
                 if 'award' in entry:
                     the_file.write('award = "true"\n')
                 
-                # I put the individual .bib entry to a file with the same name as the .md to create the CITE option
-                db = BibDatabase()
-                db.entries =[entry]
-                writer = BibTexWriter()
-                with open('static/files/citations/'+supetrim(entry['ID']+'.bib'), 'w', encoding="utf8") as bibfile:
-                    bibfile.write(writer.write(db))
+                ## I put the individual .bib entry to a file with the same name as the .md to create the CITE option
+                #db = BibDatabase()
+                #db.entries =[entry]
+                #writer = BibTexWriter()
+                #with open('static/files/citations/'+supetrim(entry['ID']+'.bib'), 'w', encoding="utf8") as bibfile:
+                #    bibfile.write(writer.write(db))
 
-                the_file.write('+++\n\n')
+                the_file.write(YAML_FM_DELIM + '\n\n')
                 
                 # Any notes are copied to the main document
                 if 'note' in entry:
