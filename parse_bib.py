@@ -13,6 +13,7 @@ Edited by Cassio Batista on Jun 2019
 
 import sys
 import os
+import re
 import argparse
 
 import bibtexparser
@@ -30,7 +31,8 @@ def RepresentsInt(s):
 
 
 def supetrim(string):
-    return string.replace("\\" , "").replace("{" , "").replace("}" , "").replace("\n"," ")
+    out = re.sub('[\\\\{}]', '', string)
+    return out.replace('\n',' ')
 
 
 def month_string_to_number(string):
