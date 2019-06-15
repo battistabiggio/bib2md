@@ -72,7 +72,7 @@ if __name__ == "__main__":
         with open(args.input, encoding="utf8") as bibtex_file:
             bibtex_str = bibtex_file.read()
     except EnvironmentError:  # parent of IOError, OSError *and* WindowsError where available
-        print('File "'+args.input+'" not found or some other error...')
+        print('File "' + args.input + '" not found or some other error...')
         sys.exit(3)
 
     # It takes the type of the bibtex entry and maps to a corresponding category of the academic theme
@@ -170,13 +170,6 @@ if __name__ == "__main__":
                     the_file.write('url_pdf = "'+supetrim(entry['link'])+'"\n')
                 if 'doi' in entry:
                     the_file.write('doi = "'+supetrim(entry['doi'])+'"\n')
-                
-                # Default parameters that can be later castomized
-                the_file.write('math = true\n')
-                the_file.write('highlight = true\n')
-                the_file.write('[header]\n')
-                the_file.write('image = ""\n')
-                the_file.write('caption = ""\n')
                 
                 # I keep in my bibtex file a parameter called award for publications that received an award (e.g., best paper, etc.)
                 if 'award' in entry:
