@@ -43,18 +43,21 @@ if __name__ == "__main__":
     bib_data = database.parse_file(args.input)
     for bibkey in bib_data.entries:
         title = bib_data.entries[bibkey].fields['title']
-        bib_data.entries[bibkey].fields['title'] = '** {} **'.format(title)
+        bib_data.entries[bibkey].fields['title'] = '**{}**'.format(title)
 
     for plainentry in plain_style.format_bibliography(bib_data):
         markdown = os.path.join(args.dir, '{}.md'.format(plainentry.key))
         endnote  = plainentry.text.render(plain_backend('utf8'))
         authors  = endnote.split('*')[0].split(',')
         title    = endnote.split('*')[2].strip().rstrip()
-        endnote = endnote.replace('** %s' % title[0], '** %s' % title[0].capitalize())
+        #where    = endnote.split('*')[4].strip().rstrip()#.split(',')[0]
+        endnote  = endnote.replace('**'+title[0], '**'+title[0].capitalize())
+        if 'URL:' in endnote:
+            endnote = endnote.split('URL:')[0].rstrip()
         with open(markdown, 'w', encoding='utf8') as md:
             md.write(YAML_FM_DELIM + '\n')
-            md.write('endnote: %s\n' % endnote)
-            md.write('title: %s\n'   % title.capitalize())
+            md.write('endnote: "%s"\n' % endnote)
+            md.write('title: "%s"\n'   % title.capitalize())
             md.write('authors:\n')
             for author in authors:
                 md.write('- %s\n' % author.strip().rstrip().rstrip('.').lstrip('and '))
@@ -66,9 +69,6 @@ if __name__ == "__main__":
             for field, value in bibentry.fields.items():
                 if field != 'title':
                     md.write('%s: "%s"\n' % (field, value))
-            #md.write('authors:\n')
-            #for author in bibentry.persons.values().pop():
-            #    md.write('- %s %s\n' % (author.first_names[0], author.last_names[0]))
             md.write(YAML_FM_DELIM + '\n\n')
 
             md.write('# Abstract\n')
