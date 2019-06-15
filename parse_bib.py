@@ -35,30 +35,6 @@ def supetrim(string):
     return out.replace('\n',' ')
 
 
-def month_string_to_number(string):
-    m = {
-        'jan':1,
-        'feb':2,
-        'mar':3,
-        'apr':4,
-        'may':5,
-        'jun':6,
-        'jul':7,
-        'aug':8,
-        'sep':9,
-        'oct':10,
-        'nov':11,
-        'dec':12
-        }
-    s = string.strip()[:3].lower()
-
-    try:
-        out = m[s]
-        return out
-    except:
-        raise ValueError('Not a month')
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A script to parse a single '\
                 'BibTeX (.bib) file into Beautiful Hugo\'s publication '\
@@ -102,17 +78,9 @@ if __name__ == "__main__":
             the_file.write('title: "'+supetrim(entry['title'])+'"\n')
             
             if 'year' in entry:
-                date = entry['year']
-                if 'month' in entry:
-                    if RepresentsInt(entry['month']):
-                        month = entry['month']
-                    else:
-                        month = str(month_string_to_number(entry['month']))
-                    date = date+'-'+ month.zfill(2)
-                else:
-                    date = date+'-01'
-                the_file.write('date: "' + date + '-01"\n')
-                the_file.write('year: "' + entry['year'] + '"\n')
+                date = entry['year'] + '-01-01' 
+                the_file.write('date: "%s"\n' % date)
+                the_file.write('year: "%s"\n' % entry['year'])
                 
             # Treating the authors
             if 'author' in entry:
@@ -128,16 +96,23 @@ if __name__ == "__main__":
             
             # Treating the publication type
             if 'ENTRYTYPE' in entry:
-                if 'booktitle' in entry and ('Seminar' in supetrim(entry['booktitle'])):
-                    the_file.write('publication_types: ['+pubtype_dict['PW']+']\n')
-                elif 'booktitle' in entry and ('Workshop' in supetrim(entry['booktitle'])):
-                    the_file.write('publication_types: ['+pubtype_dict['conference']+']\n')
-                elif 'note' in entry and ('review' in supetrim(entry['note'])):
-                    the_file.write('publication_types: ['+pubtype_dict['submitted']+']\n')
-                elif 'note' in entry and ('Conditional' in supetrim(entry['note'])):
-                    the_file.write('publication_types: ['+pubtype_dict['submitted']+']\n')
+                if 'booktitle' in entry:
+                    if 'Seminar' in supetrim(entry['booktitle']):
+                        the_file.write('publication_types: %s\n' % \
+                                pubtype_dict['PW'])
+                    elif 'Workshop' in supetrim(entry['booktitle']):
+                        the_file.write('publication_types: %s\n' % \
+                                pubtype_dict['conference'])
+                elif 'note' in entry: 
+                    if 'review' in supetrim(entry['note']):
+                        the_file.write('publication_types: %s\n' % \
+                                pubtype_dict['submitted'])
+                    elif 'Conditional' in supetrim(entry['note']):
+                        the_file.write('publication_types: %s\n' % \
+                                pubtype_dict['submitted'])
                 else:
-                    the_file.write('publication_types: ['+pubtype_dict[entry['ENTRYTYPE']]+']\n')
+                    the_file.write('publication_types: %s\n' % \
+                                pubtype_dict[entry['ENTRYTYPE']])
             
             # Treating the publication journal, conference, etc.
             if 'booktitle' in entry:
@@ -149,22 +124,12 @@ if __name__ == "__main__":
             elif 'institution' in entry:
                 the_file.write('publication: "_'+supetrim(entry['institution'])+'_"\n')
                 
-            # Add the abstract if it's available in the bibtex
-            # FIXME: needs to go to content
-            
             # I add urls to the online version and the DOI
             if 'link' in entry:
                 the_file.write('url_pdf: "'+supetrim(entry['link'])+'"\n')
             if 'doi' in entry:
                 the_file.write('doi: "'+supetrim(entry['doi'])+'"\n')
             
-            ## I put the individual .bib entry to a file with the same name as the .md to create the CITE option
-            #db = BibDatabase()
-            #db.entries =[entry]
-            #writer = BibTexWriter()
-            #with open('static/files/citations/'+supetrim(entry['ID']+'.bib'), 'w', encoding="utf8") as bibfile:
-            #    bibfile.write(writer.write(db))
-
             the_file.write(YAML_FM_DELIM + '\n\n')
 
             the_file.write('# Abstract\n')
@@ -175,12 +140,13 @@ if __name__ == "__main__":
 
             bibdb = BibDatabase()
             bibdb.entries = [entry]
+
             bibwriter = BibTexWriter()
             bibwriter.align_values = True # TOP CARALHO
             bibwriter.indent = '    '
+
             the_file.write('# BibTeX Citation\n')
             the_file.write(bibwriter.write(bibdb))
-
 
             ## Any notes are copied to the main document
             #if 'note' in entry:
