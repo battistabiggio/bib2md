@@ -114,6 +114,7 @@ if __name__ == "__main__":
                 else:
                     date = date+'-01'
                 the_file.write('date: "' + date + '-01"\n')
+                the_file.write('year: "' + entry['year'] + '"\n')
                 
             # Treating the authors
             if 'author' in entry:
