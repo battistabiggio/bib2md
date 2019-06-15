@@ -93,98 +93,87 @@ if __name__ == "__main__":
     bib_database = bibtexparser.loads(bibtex_str)
     for entry in bib_database.entries:
         filenm = os.path.join(args.dir, '{}.md'.format(entry['ID']))
+        print(filenm)
         
-        # If the same publication exists, then skip the creation. I customize the .md files later, so I don't want them overwritten. Only new publications are created.
-        if os.path.isfile(filenm):
-            pass
-        else:
-            with open(filenm, 'w', encoding="utf8") as the_file:
-                the_file.write(YAML_FM_DELIM + '\n')
-                the_file.write('title = "'+supetrim(entry['title'])+'"\n')
-                #print('Parsing ' + entry['ID'])
-                
-                if 'year' in entry:
-                    date = entry['year']
-                    if 'month' in entry:
-                        if RepresentsInt(entry['month']):
-                            month = entry['month']
-                        else:
-                            month = str(month_string_to_number(entry['month']))
-                        date = date+'-'+ month.zfill(2)
+        # TODO do something to avoid overwriting pubs but not repeating them as well
+        with open(filenm, 'w', encoding="utf8") as the_file:
+            the_file.write(YAML_FM_DELIM + '\n')
+            the_file.write('title: "'+supetrim(entry['title'])+'"\n')
+            #print('Parsing ' + entry['ID'])
+            
+            if 'year' in entry:
+                date = entry['year']
+                if 'month' in entry:
+                    if RepresentsInt(entry['month']):
+                        month = entry['month']
                     else:
-                        date = date+'-01'
-                    the_file.write('date = "'+date+'-01"\n')
-                    
-                # Treating the authors
-                if 'author' in entry:
-                    authors = entry['author'].split(' and ')
-                    the_file.write('authors = [')
-                    authors_str = ''
-                    for author in authors:
-                        author_strip = supetrim(author)
-                        author_split = author_strip.split(',')
-                        if len(author_split)==2:
-                            author_strip = author_split[1].strip() + ' ' +author_split[0].strip()
-                        author_split = author_strip.split(' ')
-                        author_strip = author_split[0][0]+'. '+' '.join(map(str, author_split[1:]))
-                        authors_str = authors_str+ '"'+author_strip+'",'
-                    the_file.write(authors_str[:-1]+']\n')
+                        month = str(month_string_to_number(entry['month']))
+                    date = date+'-'+ month.zfill(2)
+                else:
+                    date = date+'-01'
+                the_file.write('date: "' + date + '-01"\n')
                 
-                # Treating the publication type
-                if 'ENTRYTYPE' in entry:
-                    if 'booktitle' in entry and ('Seminar' in supetrim(entry['booktitle'])):
-                        the_file.write('publication_types = ['+pubtype_dict['PW']+']\n')
-                    elif 'booktitle' in entry and ('Workshop' in supetrim(entry['booktitle'])):
-                        the_file.write('publication_types = ['+pubtype_dict['conference']+']\n')
-                    elif 'note' in entry and ('review' in supetrim(entry['note'])):
-                        the_file.write('publication_types = ['+pubtype_dict['submitted']+']\n')
-                    elif 'note' in entry and ('Conditional' in supetrim(entry['note'])):
-                        the_file.write('publication_types = ['+pubtype_dict['submitted']+']\n')
-                    else:
-                        the_file.write('publication_types = ['+pubtype_dict[entry['ENTRYTYPE']]+']\n')
+            # Treating the authors
+            if 'author' in entry:
+                authors = entry['author'].split(' and ')
+                the_file.write('authors: ' + '\n')
+                authors_str = ''
+                for author in authors:
+                    author_strip = supetrim(author)
+                    author_split = author_strip.split(',')
+                    if len(author_split)==2:
+                        author_strip = author_split[1].strip() + ' ' +author_split[0].strip()
+                    author_split = author_strip.split(' ')
+                    author_strip = author_split[0][0]+'. '+' '.join(map(str, author_split[1:]))
+                    authors_str = authors_str+ '"'+author_strip+'",'
+                the_file.write(authors_str[:-1]+']\n')
+            
+            # Treating the publication type
+            if 'ENTRYTYPE' in entry:
+                if 'booktitle' in entry and ('Seminar' in supetrim(entry['booktitle'])):
+                    the_file.write('publication_types: ['+pubtype_dict['PW']+']\n')
+                elif 'booktitle' in entry and ('Workshop' in supetrim(entry['booktitle'])):
+                    the_file.write('publication_types: ['+pubtype_dict['conference']+']\n')
+                elif 'note' in entry and ('review' in supetrim(entry['note'])):
+                    the_file.write('publication_types: ['+pubtype_dict['submitted']+']\n')
+                elif 'note' in entry and ('Conditional' in supetrim(entry['note'])):
+                    the_file.write('publication_types: ['+pubtype_dict['submitted']+']\n')
+                else:
+                    the_file.write('publication_types: ['+pubtype_dict[entry['ENTRYTYPE']]+']\n')
+            
+            # Treating the publication journal, conference, etc.
+            if 'booktitle' in entry:
+                the_file.write('publication: "_'+supetrim(entry['booktitle'])+'_"\n')
+            elif 'journal' in entry:
+                the_file.write('publication: "_'+supetrim(entry['journal'])+'_"\n')
+            elif 'school' in entry:
+                the_file.write('publication: "_'+supetrim(entry['school'])+'_"\n')
+            elif 'institution' in entry:
+                the_file.write('publication: "_'+supetrim(entry['institution'])+'_"\n')
                 
-                # Treating the publication journal, conference, etc.
-                if 'booktitle' in entry:
-                    the_file.write('publication = "_'+supetrim(entry['booktitle'])+'_"\n')
-                elif 'journal' in entry:
-                    the_file.write('publication = "_'+supetrim(entry['journal'])+'_"\n')
-                elif 'school' in entry:
-                    the_file.write('publication = "_'+supetrim(entry['school'])+'_"\n')
-                elif 'institution' in entry:
-                    the_file.write('publication = "_'+supetrim(entry['institution'])+'_"\n')
-                    
-                # I never put the short version. In the future I will use a dictionary like the authors to set the acronyms of important conferences and journals
-                the_file.write('publication_short = ""\n')
-                
-                # Add the abstract if it's available in the bibtex
-                if 'abstract' in entry:
-                    the_file.write('abstract = "'+supetrim(entry['abstract'])+'"\n')
-                
-                # Some features are disabled. I activate them later
-                the_file.write('image_preview = ""\n')
-                the_file.write('selected = false\n')
-                the_file.write('projects = []\n')
+            # I never put the short version. In the future I will use a dictionary like the authors to set the acronyms of important conferences and journals
+            the_file.write('publication_short: ""\n')
+            
+            # Add the abstract if it's available in the bibtex
+            if 'abstract' in entry:
+                the_file.write('abstract: "'+supetrim(entry['abstract'])+'"\n')
+            
+            # I add urls to the online version and the DOI
+            if 'link' in entry:
+                the_file.write('url_pdf: "'+supetrim(entry['link'])+'"\n')
+            if 'doi' in entry:
+                the_file.write('doi: "'+supetrim(entry['doi'])+'"\n')
+            
+            ## I put the individual .bib entry to a file with the same name as the .md to create the CITE option
+            #db = BibDatabase()
+            #db.entries =[entry]
+            #writer = BibTexWriter()
+            #with open('static/files/citations/'+supetrim(entry['ID']+'.bib'), 'w', encoding="utf8") as bibfile:
+            #    bibfile.write(writer.write(db))
 
-                # I add urls to the online version and the DOI
-                if 'link' in entry:
-                    the_file.write('url_pdf = "'+supetrim(entry['link'])+'"\n')
-                if 'doi' in entry:
-                    the_file.write('doi = "'+supetrim(entry['doi'])+'"\n')
-                
-                # I keep in my bibtex file a parameter called award for publications that received an award (e.g., best paper, etc.)
-                if 'award' in entry:
-                    the_file.write('award = "true"\n')
-                
-                ## I put the individual .bib entry to a file with the same name as the .md to create the CITE option
-                #db = BibDatabase()
-                #db.entries =[entry]
-                #writer = BibTexWriter()
-                #with open('static/files/citations/'+supetrim(entry['ID']+'.bib'), 'w', encoding="utf8") as bibfile:
-                #    bibfile.write(writer.write(db))
-
-                the_file.write(YAML_FM_DELIM + '\n\n')
-                
-                # Any notes are copied to the main document
-                if 'note' in entry:
-                    strTemp = supetrim(entry['note'])
-                    the_file.write(strTemp + "\n")
+            the_file.write(YAML_FM_DELIM + '\n\n')
+            
+            # Any notes are copied to the main document
+            if 'note' in entry:
+                strTemp = supetrim(entry['note'])
+                the_file.write(strTemp + "\n")
