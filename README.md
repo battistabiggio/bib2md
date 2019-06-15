@@ -1,14 +1,14 @@
 # parse_bib
 
 This is a simple script that parses a bibtex file and generates the markdown
-files for the [Hugo academic theme](https://github.com/gcushen/hugo-academic). 
+files for the 
+~~[Hugo academic theme](https://github.com/gcushen/hugo-academic).~~ 
+[Beautiful Hugo theme](https://github.com/halogenica/beautifulhugo/)
 
-The script relies on
-[bibtexparser](https://github.com/sciunto-org/python-bibtexparser) to get the
+The script relies on `bibtexparser` and `pybtex` libs to get the
 individual entries from the bibtex file with your publications and then
 generates a .md file for each one of them.
-~~under */content/publications/* and a
-.bib file with the same name under *static/files/citations/*.~~
+~~under */content/publications/* and a .bib file with the same name under *static/files/citations/*.~~
 
 ## Usage
 
@@ -32,7 +32,8 @@ optional arguments:
 ```
   
 ## Dependencies (Debian 9.9)
-```
-sudo -H pip3 install bibtexparser pybtex --upgrade
+```bash
+sudo -H pip3 install --upgrade \
+    bibtexparser pybtex 
 
 ```
