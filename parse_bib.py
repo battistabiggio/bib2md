@@ -57,36 +57,6 @@ def month_string_to_number(string):
         raise ValueError('Not a month')
 
 
-# You can add the name of a co-author and their website and it will create a link on the publications website
-def get_author_link(string):
-    web = {
-        'P. Aristidou':'https://www.paristidou.info',
-        'T. Van Cutsem': 'http://www.montefiore.ulg.ac.be/~vct/',
-        'G. Hug':'http://www.psl.ee.ethz.ch/people/prof--gabriela-hug.html',
-        'G. Hug-Glanzmann': 'http://www.psl.ee.ethz.ch/people/prof--gabriela-hug.html',
-        'C. Geuzaine':'http://www.montefiore.ulg.ac.be/~geuzaine/',
-        'L. Papangelis':'http://scholar.google.ch/citations?user=cZakW7oAAAAJ&hl=en',
-        'D. Ernst':'http://blogs.ulg.ac.be/damien-ernst/',
-        'G. Valverde':'http://scholar.google.co.uk/citations?user=Uy6MCt4AAAAJ&hl=en',
-        'F. Plumier':'https://scholar.google.ch/citations?user=2tyCECYAAAAJ&hl=en',
-        'D. Fabozzi':'https://scholar.google.ch/citations?user=2wog_JcAAAAJ&hl=en',
-        'N. Hatziargyriou':'https://scholar.google.ch/citations?user=TL9yCsQAAAAJ&hl=en',
-        'A. Ulbig':'https://scholar.google.ch/citations?user=I1eJUa0AAAAJ&hl=en',
-        'S. Koch':'https://scholar.google.ch/citations?user=RllLoicAAAAJ&hl=en',
-        'S. Karagiannopoulos':'http://www.eeh.ee.ethz.ch/en/power/power-systems-laboratory/people/scientific-staff/uid/7275.html',
-        'U. Markovic':'https://scholar.google.ch/citations?user=xCrtgNwAAAAJ&hl=en',
-        'G. Lammert':'https://www.uni-kassel.de/eecs/fachgebiete/e2n/mitarbeitende/gustav-lammert.html'
-        }
-
-    out = ''
-    try:
-        out = web[string]
-    except:
-        print("Author's "+string+" website is missing.")
-
-    return out
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A script to parse a single '\
                 'BibTeX (.bib) file into Beautiful Hugo\'s publication '\
@@ -157,11 +127,7 @@ if __name__ == "__main__":
                             author_strip = author_split[1].strip() + ' ' +author_split[0].strip()
                         author_split = author_strip.split(' ')
                         author_strip = author_split[0][0]+'. '+' '.join(map(str, author_split[1:]))
-                        author_web = get_author_link(author_strip)
-                        if author_web:
-                            authors_str = authors_str + '"['+author_strip+'](' + author_web + ')",'
-                        else:
-                            authors_str = authors_str+ '"'+author_strip+'",'
+                        authors_str = authors_str+ '"'+author_strip+'",'
                     the_file.write(authors_str[:-1]+']\n')
                 
                 # Treating the publication type
