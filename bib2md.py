@@ -124,6 +124,6 @@ if __name__ == "__main__":
             bibtw.indent = '    '
 
             md.write('## BibTeX Citation\n')
-            md.write('```bibtex' + '\n') # FIXME use shortcote highlight
+            md.write('{{< highlight bibtex >}}' + '\n') # FIXME bibtex supported?
             md.write(bibtw.write(bibdb))
-            md.write('```' + '\n')
+            md.write('{{< /highlight >}}' + '\n')
