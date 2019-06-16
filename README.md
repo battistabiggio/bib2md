@@ -30,6 +30,10 @@ optional arguments:
   -i BIB, --input BIB  input bibtex .bib file
   -d DIR, --dir DIR    output dir to store .md files
 ```
+
+## BibTeX entries fully supported so far
+- inproceedings
+- article
   
 ## Dependencies (Debian 9.9)
 ```bash
