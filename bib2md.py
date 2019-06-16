@@ -17,32 +17,38 @@ import bibtexparser
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser.bibdatabase import BibDatabase
 
-FM_DELIM = '---' # YAML
+# front matter delimiter: dashes for YAML, pluses for TOML
+FM_DELIM = '---' 
 
 # http://bib-it.sourceforge.net/help/fieldsAndEntryTypes.php#proceedings
+# NOTE: title  is required for all entries, without exception
+# NOTE: author is required for all entries except proceedings. 
+#       beware the script will fail for this entry
+WHERE_FIELDS = ['booktitle', 'journal', 'school', 'institution'] # 'publisher'
 BIB_FIELDS = {
     'article': {
         'req': ['journal', 'year'],
-        'opt': ['volume', 'number', 'pages', 
-                'month', 'note'],
+        'cus': ['doi', 'url', 'keywords', 'abstract'],
+        'opt': ['volume', 'number', 'pages', 'month', 'note'],
     },
     'inproceedings': {
         'req': ['booktitle', 'year'],
+        'cus': ['doi', 'url', 'keywords', 'abstract'],
         'opt': ['editor', 'volume', 'number', 
                 'series', 'pages', 'address', 
                 'month', 'organization', 'publisher', 'note'],
     },
-    'booklet':       { 'req': [], 'opt': [], },
+    'book':          { 'req': [], 'opt': [], },
+    'phdthesis':     { 'req': [], 'opt': [], },
+    'mastersthesis': { 'req': [], 'opt': [], },
+    'techreport':    { 'req': [], 'opt': [], },
     'inbook':        { 'req': [], 'opt': [], },
     'incollection':  { 'req': [], 'opt': [], },
-    'misc':          { 'req': [], 'opt': [], },
-    'book':          { 'req': [], 'opt': [], },
     'proceedings':   { 'req': [], 'opt': [], },
-    'unpublished':   { 'req': [], 'opt': [], },
-    'mastersthesis': { 'req': [], 'opt': [], },
-    'phdthesis':     { 'req': [], 'opt': [], },
-    'techreport':    { 'req': [], 'opt': [], },
     'manual':        { 'req': [], 'opt': [], },
+    'misc':          { 'req': [], 'opt': [], },
+    'unpublished':   { 'req': [], 'opt': [], },
+    'booklet':       { 'req': [], 'opt': [], },
 }
 
 if __name__ == "__main__":
@@ -70,20 +76,22 @@ if __name__ == "__main__":
     for bibkey in bib_data.entries:
         title = bib_data.entries[bibkey].fields['title']
         bib_data.entries[bibkey].fields['title'] = '<b>{}</b>'.format(title)
-        # TODO make 'booktitle' and 'journal' fields italic
+        for place in WHERE_FIELDS:
+            if place in bib_data.entries[bibkey].fields:
+                where = bib_data.entries[bibkey].fields[place]
+                bib_data.entries[bibkey].fields[place] = '<i>{}</i>'.format(where)
+                break
 
     for plainentry in plain_style.format_bibliography(bib_data):
-        markdown   = os.path.join(args.dir, '{}.md'.format(plainentry.key))
-        plaintext  = re.split('<b>|</b>|URL:', 
-                    plainentry.text.render(plain_backend('utf8')))
-        endnote  = '{}\'<b>{}</b>\'{}'.format(plaintext[0], 
-                    plaintext[1].capitalize(), plaintext[2].rstrip())
-        authors  = plaintext[0].split(',')
-        title    = plaintext[1].strip().rstrip().capitalize()
+        markdown  = os.path.join(args.dir, '{}.md'.format(plainentry.key))
+        endnote = plainentry.text.render(plain_backend('utf8')).split('URL:')[0]
+        tT = endnote[endnote.index('<b>')+3] # gambiarra master
+        endnote = endnote.replace('<b>'+tT, '<b>'+tT.upper())
+        authors, title, garbage = re.split('<b>|</b>', endnote)
         with open(markdown, 'w', encoding='utf8') as md:
             md.write(FM_DELIM + '\n')
             md.write('authors:\n')
-            for author in authors:
+            for author in authors.split(','):
                 md.write('- %s\n' % author.strip().rstrip().rstrip('.').lstrip('and '))
             md.write('%-10s "%s"\n' % ('title:', title))
             md.write('%-10s "%s"\n' % ('endnote:', endnote))
@@ -94,6 +102,8 @@ if __name__ == "__main__":
             md.write('%-10s "%s"\n' % ('pub_type:', bibentry.type))
             for field, value in bibentry.fields.items():
                 if field in BIB_FIELDS[bibentry.type]['req']:
+                    if field in WHERE_FIELDS:
+                        value = re.sub('<i>|</i>', '', value)
                     md.write('%-10s "%s"\n' % (field+':', value))
             md.write('%-10s "%s-01-01"\n' % ('date:', bibentry.fields['year']))
             md.write(FM_DELIM + '\n\n')
@@ -104,11 +114,6 @@ if __name__ == "__main__":
             else:
                 md.write('Unavailable :(' + '\n')
             md.write('\n')
-
-            #md.write('# BibTeX Citation\n')
-            #bd = database.BibliographyData()
-            #bd.add_entry(bibentry.key, bibentry)
-            #md.write(bd.to_string('bibtex').replace('\\textasciitilde ','~') + '\n')
 
     with open(args.input, encoding="utf8") as bibtex_file:
         bibtex_str = bibtex_file.read()
@@ -125,5 +130,5 @@ if __name__ == "__main__":
 
             md.write('## BibTeX Citation\n')
             md.write('{{< highlight bibtex >}}' + '\n') # FIXME bibtex supported?
-            md.write(bibtw.write(bibdb))
+            md.write(bibtw.write(bibdb).rstrip() + '\n')
             md.write('{{< /highlight >}}' + '\n')
