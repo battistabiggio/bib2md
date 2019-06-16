@@ -28,12 +28,12 @@ WHERE_FIELDS = ['booktitle', 'journal', 'school', 'institution'] # 'publisher'
 BIB_FIELDS = {
     'article': {
         'req': ['journal', 'year'],
-        'cus': ['doi', 'url', 'keywords', 'abstract'],
+        'cus': ['doi', 'url', 'keywords', 'abstract'], # TODO
         'opt': ['volume', 'number', 'pages', 'month', 'note'],
     },
     'inproceedings': {
         'req': ['booktitle', 'year'],
-        'cus': ['doi', 'url', 'keywords', 'abstract'],
+        'cus': ['doi', 'url', 'keywords', 'abstract'], # TODO
         'opt': ['editor', 'volume', 'number', 
                 'series', 'pages', 'address', 
                 'month', 'organization', 'publisher', 'note'],
