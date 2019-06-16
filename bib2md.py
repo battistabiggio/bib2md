@@ -100,11 +100,9 @@ if __name__ == "__main__":
 
             md.write('## Abstract\n')
             if 'abstract' in bibentry.fields:
-                md.write('```' + '\n') # FIXME
                 md.write(bibentry.fields['abstract'] + '\n')
-                md.write('```' + '\n')
             else:
-                md.write('unavailable :(' + '\n')
+                md.write('Unavailable :(' + '\n')
             md.write('\n')
 
             #md.write('# BibTeX Citation\n')
