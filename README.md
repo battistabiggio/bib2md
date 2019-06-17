@@ -43,4 +43,5 @@ sudo -H pip3 install --upgrade \
 This project was forked and originally based on the work of Petros Aristidou
 called [parse_bib](https://github.com/apetros/parse_bib) for Hugo Academic. 
 However since I made it compatible to Beautiful Hugo theme apart from
-including `pybtex` dependency, I think this project has followed its own path.
+including the `pybtex` dependency, I think this project has followed its own
+path. I kept @apetros' license, tho.
