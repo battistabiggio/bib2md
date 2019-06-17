@@ -1,20 +1,18 @@
-# parse_bib
+# bib2md: BibTeX to Beautiful Hugo MarkDown (YAML?)
 
-This is a simple script that parses a bibtex file and generates the markdown
+This is a simple script that parses a BibTeX file and generates the Markdown
 files for the 
-~~[Hugo academic theme](https://github.com/gcushen/hugo-academic).~~ 
-[Beautiful Hugo theme](https://github.com/halogenica/beautifulhugo/)
+[Beautiful Hugo theme](https://github.com/halogenica/beautifulhugo/), especially
+the section that goes into the front matter (which is pretty much YAML rather
+than Mardown actually).
 
-The script relies on `bibtexparser` and `pybtex` libs to get the
-individual entries from the bibtex file with your publications and then
-generates a .md file for each one of them.
-~~under */content/publications/* and a .bib file with the same name under *static/files/citations/*.~~
+The script relies on `bibtexparser` and `pybtex` libs to get the individual
+entries from the BibTeX file with your publications and then generates a .md
+file for each one of them.
 
 ## Usage
 
-Simply download the script 
-~~in your root website folder (e.g., next to the .toml file)~~, 
-make sure that you have
+Simply download the script make sure that you have
 [bibtexparser](https://github.com/sciunto-org/python-bibtexparser) **and** 
 [pybtex](https://pybtex.org/) installed. Follow the argparse help message below
 to run:
@@ -39,5 +37,4 @@ optional arguments:
 ```bash
 sudo -H pip3 install --upgrade \
     bibtexparser pybtex 
-
 ```
