@@ -1,21 +1,18 @@
-# bib2md: BibTeX to Beautiful Hugo MarkDown (YAML?)
+# bib2md: BibTeX to Markdown
 
-This is a simple script that parses a BibTeX file and generates the Markdown
-files for the 
-[Beautiful Hugo theme](https://github.com/halogenica/beautifulhugo/), especially
-the section that goes into the front matter (which is pretty much YAML rather
-than Mardown actually).
+This is a simple script that parses a BibTeX file and generates a Markdown
+file containing the whole bibligraphy as shown at: https://battistabiggio.github.io/publications/
 
-The script relies on `bibtexparser` and `pybtex` libs to get the individual
-entries from the BibTeX file with your publications and then generates a .md
-file for each one of them.
+The script is a modification of that intially provided by Cassio Batista, and 
+relies on `pybtex` to get the individual entries from the BibTeX file with your publications, 
+and then generates a .md file containing the full bibliography, sorted by year (more recent to older),
+and grouped by type.
 
 ## Usage
 
-Simply download the script make sure that you have
-[bibtexparser](https://github.com/sciunto-org/python-bibtexparser) **and** 
-[pybtex](https://pybtex.org/) installed. Follow the argparse help message below
-to run:
+Simply download the script, make sure that you have
+[pybtex](https://pybtex.org/) installed. 
+Follow the argparse help message below to run:
 
 ```
 usage: bib2md.py [-h] -i BIB [-d DIR]
@@ -26,18 +23,13 @@ publication Markdown (.md) files
 optional arguments:
   -h, --help           show this help message and exit
   -i BIB, --input BIB  input bibtex .bib file
-  -d DIR, --dir DIR    output dir to store .md files
+  -d DIR, --dir DIR    output dir to store .md file
 ```
 
 ## BibTeX entries fully supported so far
 - inproceedings
 - article
   
-## Dependencies (Debian 9.9)
-```bash
-sudo -H pip3 install --upgrade \
-    bibtexparser pybtex 
-```
 
 ## Credits
 This project was forked and originally based on the work of Petros Aristidou
