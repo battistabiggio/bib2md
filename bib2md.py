@@ -1,134 +1,180 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # -*- vim: set fileencoding=utf-8 -*-
-#
-# author: jun 2019
-# cassio batista - https://cassota.gitlab.io/
 
 import sys
 import os
-import re
 import argparse
 
 from pybtex.plugin import find_plugin
 from pybtex import database
 
-import bibtexparser
-from bibtexparser.bwriter import BibTexWriter
-from bibtexparser.bibdatabase import BibDatabase
+from pybtex.style.formatting.unsrt import Style as UnsrtStyle
+from pybtex.style.template import (field, sentence)
+from pybtex.plugin import register_plugin as pybtex_register_plugin
+
+
+class CustomStyle(UnsrtStyle):
+    default_sorting_style = 'author_year_title'
+
+    def format_title(self, e, which_field, as_sentence=True):
+        # This avoids that title is capitalized (and then set all lowercase)
+        formatted_title = field(which_field)
+        if as_sentence:
+            return sentence[formatted_title]
+        else:
+            return formatted_title
+
+
+pybtex_register_plugin("pybtex.style.formatting", "custom", CustomStyle)
 
 # front matter delimiter: dashes for YAML, pluses for TOML
-FM_DELIM = '---' 
+FM_DELIM = '---'
 
 # http://bib-it.sourceforge.net/help/fieldsAndEntryTypes.php#proceedings
 # NOTE: title  is required for all entries, without exception
-# NOTE: author is required for all entries except proceedings. 
+# NOTE: author is required for all entries except proceedings.
 #       beware the script will fail for this entry
-WHERE_FIELDS = ['booktitle', 'journal', 'school', 'institution'] # 'publisher'
+WHERE_FIELDS = ['booktitle', 'journal', 'school', 'institution']  # 'publisher'
 BIB_FIELDS = {
     'article': {
         'req': ['journal', 'year'],
-        'cus': ['doi', 'url', 'keywords', 'abstract'], # TODO
+        'cus': ['doi', 'url', 'keywords', 'abstract'],  # TODO
         'opt': ['volume', 'number', 'pages', 'month', 'note'],
     },
     'inproceedings': {
         'req': ['booktitle', 'year'],
-        'cus': ['doi', 'url', 'keywords', 'abstract'], # TODO
-        'opt': ['editor', 'volume', 'number', 
-                'series', 'pages', 'address', 
+        'cus': ['doi', 'url', 'keywords', 'abstract'],  # TODO
+        'opt': ['editor', 'volume', 'number',
+                'series', 'pages', 'address',
                 'month', 'organization', 'publisher', 'note'],
     },
-    'book':          { 'req': [], 'opt': [], },
-    'phdthesis':     { 'req': [], 'opt': [], },
-    'mastersthesis': { 'req': [], 'opt': [], },
-    'techreport':    { 'req': [], 'opt': [], },
-    'inbook':        { 'req': [], 'opt': [], },
-    'incollection':  { 'req': [], 'opt': [], },
-    'proceedings':   { 'req': [], 'opt': [], },
-    'manual':        { 'req': [], 'opt': [], },
-    'misc':          { 'req': [], 'opt': [], },
-    'unpublished':   { 'req': [], 'opt': [], },
-    'booklet':       { 'req': [], 'opt': [], },
+    'book': {'req': [], 'opt': [], },
+    'phdthesis': {'req': [], 'opt': [], },
+    'mastersthesis': {'req': [], 'opt': [], },
+    'techreport': {'req': [], 'opt': [], },
+    'inbook': {'req': [], 'opt': [], },
+    'incollection': {'req': [], 'opt': [], },
+    'proceedings': {'req': [], 'opt': [], },
+    'manual': {'req': [], 'opt': [], },
+    'misc': {'req': [], 'opt': [], },
+    'unpublished': {'req': [], 'opt': [], },
+    'booklet': {'req': [], 'opt': [], },
 }
 
+
+def print_entry(entry):
+    title = entry.fields['title']
+    url = None  # pick url or doi from bibtex
+    if 'url' in entry.fields:
+        url = entry.fields['url']
+    elif 'doi' in entry.fields:
+        url = entry.fields['doi']
+        if url[0:4] != 'http':
+            url = 'https://doi.org/' + url
+    if url is None:
+        entry.fields['title'] = '<b>{}</b>'.format(title)
+    else:
+        entry.fields['title'] = '<a href="{}"><b>{}</b></a>'.format(url, title)
+    for place in WHERE_FIELDS:
+        if place in entry.fields:
+            where = entry.fields[place]
+            entry.fields[place] = '<i>{}</i>'.format(where)
+            break
+
+    plain_backend = find_plugin('pybtex.backends', 'plaintext')
+    plain_style = find_plugin(
+        'pybtex.style.formatting', 'custom')(abbreviate_names=True)
+
+    plain_entry = plain_style.format_entry(entry.type, entry)
+    # title becomes lowercase after rendering...
+    text = plain_entry.text.render(plain_backend('utf8')).split('URL:')[0]
+    text = text.split('doi:')[0]
+    return text
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A script to parse a single '\
-                'BibTeX (.bib) file into Beautiful Hugo\'s publication '\
-                'Markdown (.md) files')
-    parser.add_argument('-i', '--input', metavar='BIB', type=str, 
-                help='input bibtex .bib file', required=True)
-    parser.add_argument('-d', '--dir', metavar='DIR', type=str, 
-                help='output dir to store .md files')
+    parser = argparse.ArgumentParser(
+        description='A script to parse a single ' 
+                    'BibTeX (.bib) file into Beautiful Hugo\'s publication ' 
+                    'Markdown (.md) files')
+    parser.add_argument('-i', '--input', metavar='BIB', type=str,
+                        help='input bibtex .bib file', required=True)
+    parser.add_argument('-d', '--dir', metavar='DIR', type=str,
+                        help='output dir to store .md files')
     args = parser.parse_args()
 
     if args.dir is None:
-        args.dir = '.' 
+        args.dir = '.'
     if not os.path.isfile(args.input):
         print('File "' + args.input + '" does not exist.')
         sys.exit(1)
 
-    plain_backend = find_plugin('pybtex.backends', 'plaintext')
-    plain_style   = find_plugin('pybtex.style.formatting', 'plain')()
-
+    # sort by year (more recent first)
     bib_data = database.parse_file(args.input)
+    data = sorted(
+        bib_data.entries.items(),
+        key=lambda e: e[1].fields['year'], reverse=True)
+    _, entries = zip(*data)
 
-    # make title bold
-    for bibkey in bib_data.entries:
-        title = bib_data.entries[bibkey].fields['title']
-        bib_data.entries[bibkey].fields['title'] = '<b>{}</b>'.format(title)
-        for place in WHERE_FIELDS:
-            if place in bib_data.entries[bibkey].fields:
-                where = bib_data.entries[bibkey].fields[place]
-                bib_data.entries[bibkey].fields[place] = '<i>{}</i>'.format(where)
-                break
+    with open('pubs.md', 'w', encoding='utf8') as md:
+        md.write('**Pre-prints**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'article' and \
+                    'arxiv' in entry.fields['journal'].lower():
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
 
-    for plainentry in plain_style.format_bibliography(bib_data):
-        markdown  = os.path.join(args.dir, '{}.md'.format(plainentry.key))
-        endnote = plainentry.text.render(plain_backend('utf8')).split('URL:')[0]
-        tT = endnote[endnote.index('<b>')+3] # gambiarra master
-        endnote = endnote.replace('<b>'+tT, '<b>'+tT.upper())
-        authors, title, garbage = re.split('<b>|</b>', endnote)
-        with open(markdown, 'w', encoding='utf8') as md:
-            md.write(FM_DELIM + '\n')
-            md.write('authors:\n')
-            for author in authors.split(','):
-                md.write('- %s\n' % author.strip().rstrip().rstrip('.').lstrip('and '))
-            md.write('%-10s "%s"\n' % ('title:', title))
-            md.write('%-10s "%s"\n' % ('endnote:', endnote))
+        md.write('\n**Journal Papers**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'article' and \
+                    'arxiv' not in entry.fields['journal'].lower():
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
 
-    for bibentry in bib_data.entries.values():
-        markdown = os.path.join(args.dir, '{}.md'.format(bibentry.key))
-        with open(markdown, 'a', encoding='utf8') as md:
-            md.write('%-10s "%s"\n' % ('pub_type:', bibentry.type))
-            for field, value in bibentry.fields.items():
-                if field in BIB_FIELDS[bibentry.type]['req']:
-                    if field in WHERE_FIELDS:
-                        value = re.sub('<i>|</i>', '', value)
-                    md.write('%-10s "%s"\n' % (field+':', value))
-            md.write('%-10s "%s-01-01"\n' % ('date:', bibentry.fields['year']))
-            md.write(FM_DELIM + '\n\n')
+        md.write('\n**Conference Papers**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'conference' or \
+                    entry.type == 'inproceedings':
+                entry.type = 'inproceedings'  # override style
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
 
-            md.write('## Abstract\n')
-            if 'abstract' in bibentry.fields:
-                md.write(bibentry.fields['abstract'] + '\n')
-            else:
-                md.write('Unavailable :(' + '\n')
-            md.write('\n')
+        md.write('\n**Book Chapters**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'incollection':
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
 
-    with open(args.input, encoding="utf8") as bibtex_file:
-        bibtex_str = bibtex_file.read()
-    bib_database = bibtexparser.loads(bibtex_str)
-    for entry in bib_database.entries:
-        markdown = os.path.join(args.dir, '{}.md'.format(entry['ID']))
-        with open(markdown, 'a', encoding="utf8") as md:
-            bibdb = BibDatabase()
-            bibdb.entries = [entry]
+        md.write('\n**Proceedings / Edited Books**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'proceedings':
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
 
-            bibtw = BibTexWriter()
-            bibtw.align_values = True # TOP CARALHO
-            bibtw.indent = '    '
+        md.write('\n**Miscellaneous**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'periodical':
+                entry.type = 'article'  # override style
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
 
-            md.write('## BibTeX Citation\n')
-            md.write('{{< highlight bibtex >}}' + '\n') # FIXME bibtex supported?
-            md.write(bibtw.write(bibdb).rstrip() + '\n')
-            md.write('{{< /highlight >}}' + '\n')
+        md.write('\n**PhD Thesis**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'phdthesis':
+                pub_index += 1
+                text = print_entry(entry)
+                md.write('%s. %s\n' % (pub_index, text))
