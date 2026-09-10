@@ -120,9 +120,12 @@ if __name__ == "__main__":
     with open('pubs.md', 'w', encoding='utf8') as md:
         md.write('**Pre-prints**\n')
         pub_index = 0
+        PREPRINT_VENUES = ('arxiv', 'techrxiv', 'preprints')
         for entry in entries:
-            if entry.type == 'article' and \
-                    'arxiv' in entry.fields['journal'].lower():
+            if entry.type != 'article':
+                continue
+            journal = entry.fields.get('journal', '').lower()
+            if any(venue in journal for venue in PREPRINT_VENUES):
                 pub_index += 1
                 text = print_entry(entry)
                 md.write('%s. %s\n' % (pub_index, text))
@@ -130,11 +133,25 @@ if __name__ == "__main__":
         md.write('\n**Journal Papers**\n')
         pub_index = 0
         for entry in entries:
-            if entry.type == 'article' and \
-                    'arxiv' not in entry.fields['journal'].lower():
+            if entry.type != 'article':
+                continue
+            journal = entry.fields.get('journal', '').lower()
+            if not any(venue in journal for venue in PREPRINT_VENUES):
                 pub_index += 1
                 text = print_entry(entry)
                 md.write('%s. %s\n' % (pub_index, text))
+
+        md.write('\n**Top-tier Conference Papers**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'conference' or \
+                    entry.type == 'inproceedings':
+                entry.type = 'inproceedings'  # override style
+                keywords = entry.fields.get('keywords', '').upper()
+                if "TOP_CONF" in keywords:
+                    pub_index += 1
+                    text = print_entry(entry)
+                    md.write('%s. %s\n' % (pub_index, text))
 
         md.write('\n**Conference Papers**\n')
         pub_index = 0
@@ -142,6 +159,16 @@ if __name__ == "__main__":
             if entry.type == 'conference' or \
                     entry.type == 'inproceedings':
                 entry.type = 'inproceedings'  # override style
+                keywords = entry.fields.get('keywords', '').upper()
+                if "TOP_CONF" not in keywords:
+                    pub_index += 1
+                    text = print_entry(entry)
+                    md.write('%s. %s\n' % (pub_index, text))
+
+        md.write('\n**Books**\n')
+        pub_index = 0
+        for entry in entries:
+            if entry.type == 'book':
                 pub_index += 1
                 text = print_entry(entry)
                 md.write('%s. %s\n' % (pub_index, text))
