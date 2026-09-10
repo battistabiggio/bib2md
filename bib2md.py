@@ -4,10 +4,11 @@
 
 import sys
 import os
+import re
 import argparse
 
 from pybtex.plugin import find_plugin
-from pybtex import database
+from pybtex import database, errors as bibtex_errors
 
 from pybtex.style.formatting.unsrt import Style as UnsrtStyle
 from pybtex.style.template import (field, sentence)
@@ -63,6 +64,78 @@ BIB_FIELDS = {
 }
 
 
+def split_raw_entries(text):
+    """Split raw BibTeX text into {key: raw_entry_text}, preserving the
+    original formatting of each entry (including things like bdsk-file
+    blobs) instead of re-serializing it through pybtex."""
+    entries = {}
+    for m in re.finditer(r'^@(\w+)\s*\{\s*([^,\s]+)\s*,', text, re.MULTILINE):
+        key = m.group(2)
+        start = m.start()
+        brace_start = text.index('{', start)
+        depth = 0
+        end = None
+        for i in range(brace_start, len(text)):
+            if text[i] == '{':
+                depth += 1
+            elif text[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        if end is None:
+            continue  # malformed entry, unbalanced braces
+        entries[key] = text[start:end]
+    return entries
+
+
+def entry_matches_author(entry, name):
+    """True if `name` is a case-insensitive substring of any author's or
+    editor's name on the entry."""
+    name = name.lower()
+    for role in ('author', 'editor'):
+        for person in entry.persons.get(role, []):
+            full_name = ' '.join(
+                str(part) for part in
+                person.last_names + person.first_names + person.middle_names)
+            if name in full_name.lower():
+                return True
+    return False
+
+
+def extract_author_entries(master_bib, author, output_bib):
+    """Extract `author`'s entries from `master_bib` (a .bib file with
+    entries from many people) into `output_bib`, preserving their
+    original raw formatting. Returns the parsed pybtex database and the
+    list of matched entry keys."""
+    # a master .bib file shared/exported across many entries may reference
+    # journal-name macros (e.g. IEEE_J_PAMI) that aren't defined in it;
+    # don't let those (in all likelihood unrelated) entries abort the parse
+    bibtex_errors.set_strict_mode(False)
+    bib_data = database.parse_file(master_bib)
+    with open(master_bib, encoding='utf8') as f:
+        raw_entries = split_raw_entries(f.read())
+
+    matched_keys = [key for key, entry in bib_data.entries.items()
+                     if entry_matches_author(entry, author)]
+
+    missing_keys = [k for k in matched_keys if k not in raw_entries]
+    if missing_keys:
+        print('Warning: could not recover raw text for keys: %s'
+              % ', '.join(missing_keys))
+
+    with open(output_bib, 'w', encoding='utf8') as f:
+        for key in matched_keys:
+            if key in raw_entries:
+                f.write(raw_entries[key] + '\n\n')
+
+    print('Extracted %d entries (of %d in "%s") matching author "%s" to "%s"'
+          % (len(matched_keys), len(bib_data.entries), master_bib,
+             author, output_bib))
+
+    return bib_data, matched_keys
+
+
 def print_entry(entry):
     title = entry.fields['title']
     url = None  # pick url or doi from bibtex
@@ -99,7 +172,17 @@ if __name__ == "__main__":
                     'BibTeX (.bib) file into Beautiful Hugo\'s publication ' 
                     'Markdown (.md) files')
     parser.add_argument('-i', '--input', metavar='BIB', type=str,
-                        help='input bibtex .bib file', required=True)
+                        required=True,
+                        help='master bibtex .bib file with entries from '
+                             'many authors')
+    parser.add_argument('-a', '--author', metavar='NAME', type=str,
+                        required=True,
+                        help='author/editor name to filter by, matched as '
+                             'a case-insensitive substring')
+    parser.add_argument('-o', '--output', metavar='BIB', type=str,
+                        default='biggio.bib',
+                        help='output .bib file with just the extracted '
+                             'entries (default: biggio.bib)')
     parser.add_argument('-d', '--dir', metavar='DIR', type=str,
                         help='output dir to store .md files')
     args = parser.parse_args()
@@ -110,10 +193,13 @@ if __name__ == "__main__":
         print('File "' + args.input + '" does not exist.')
         sys.exit(1)
 
+    # extract this author's entries from the master .bib file into args.output
+    bib_data, matched_keys = extract_author_entries(
+        args.input, args.author, args.output)
+
     # sort by year (more recent first)
-    bib_data = database.parse_file(args.input)
     data = sorted(
-        bib_data.entries.items(),
+        ((key, bib_data.entries[key]) for key in matched_keys),
         key=lambda e: e[1].fields['year'], reverse=True)
     _, entries = zip(*data)
 
