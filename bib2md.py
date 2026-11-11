@@ -36,6 +36,7 @@ FM_DELIM = '---'
 # NOTE: title  is required for all entries, without exception
 # NOTE: author is required for all entries except proceedings.
 #       beware the script will fail for this entry
+PREPRINT_VENUES = ('arxiv', 'techrxiv', 'preprints')
 WHERE_FIELDS = ['booktitle', 'journal', 'school', 'institution']  # 'publisher'
 BIB_FIELDS = {
     'article': {
@@ -136,15 +137,23 @@ def extract_author_entries(master_bib, author, output_bib):
     return bib_data, matched_keys
 
 
+def is_preprint(entry):
+    journal = entry.fields.get('journal', '').lower()
+    return entry.type == 'article' and \
+        any(venue in journal for venue in PREPRINT_VENUES)
+
+
 def print_entry(entry):
     title = entry.fields['title']
-    url = None  # pick url or doi from bibtex
-    if 'url' in entry.fields:
-        url = entry.fields['url']
-    elif 'doi' in entry.fields:
-        url = entry.fields['doi']
-        if url[0:4] != 'http':
-            url = 'https://doi.org/' + url
+    # link published papers to their DOI, and pre-prints to their url
+    # (e.g. on arXiv); fall back to the other one if missing
+    doi = entry.fields.get('doi')
+    if doi and doi[0:4] != 'http':
+        doi = 'https://doi.org/' + doi
+    links = [entry.fields.get('url'), doi]
+    if not is_preprint(entry):
+        links.reverse()
+    url = next((link for link in links if link), None)
     if url is None:
         entry.fields['title'] = '<b>{}</b>'.format(title)
     else:
@@ -180,9 +189,9 @@ if __name__ == "__main__":
                         help='author/editor name to filter by, matched as '
                              'a case-insensitive substring')
     parser.add_argument('-o', '--output', metavar='BIB', type=str,
-                        default='biggio.bib',
+                        default='biblio.bib',
                         help='output .bib file with just the extracted '
-                             'entries (default: biggio.bib)')
+                             'entries (default: biblio.bib)')
     parser.add_argument('-d', '--dir', metavar='DIR', type=str,
                         help='output dir to store .md files')
     args = parser.parse_args()
@@ -206,7 +215,6 @@ if __name__ == "__main__":
     with open('pubs.md', 'w', encoding='utf8') as md:
         md.write('**Pre-prints**\n')
         pub_index = 0
-        PREPRINT_VENUES = ('arxiv', 'techrxiv', 'preprints')
         for entry in entries:
             if entry.type != 'article':
                 continue
