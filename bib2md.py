@@ -143,7 +143,45 @@ def is_preprint(entry):
         any(venue in journal for venue in PREPRINT_VENUES)
 
 
+def is_top_conf(entry):
+    return 'TOP_CONF' in entry.fields.get('keywords', '').upper()
+
+
+# (heading, predicate) for each section of pubs.md, in output order; an
+# entry goes to the first section it matches, and is reported as skipped
+# if it matches none
+SECTIONS = [
+    ('Pre-prints', is_preprint),
+    ('Journal Papers',
+     lambda e: e.type == 'article' and not is_preprint(e)),
+    ('Top-tier Conference Papers',
+     lambda e: e.type in ('conference', 'inproceedings') and is_top_conf(e)),
+    ('Conference Papers',
+     lambda e: e.type in ('conference', 'inproceedings')
+     and not is_top_conf(e)),
+    ('Books', lambda e: e.type == 'book'),
+    ('Book Chapters', lambda e: e.type in ('incollection', 'inbook')),
+    ('Proceedings / Edited Books', lambda e: e.type == 'proceedings'),
+    ('Miscellaneous', lambda e: e.type == 'periodical'),
+    ('PhD Thesis', lambda e: e.type == 'phdthesis'),
+]
+
+# entry types rendered with another type's style
+STYLE_OVERRIDES = {
+    'conference': 'inproceedings',
+    'periodical': 'article',
+    # render book chapters uniformly: "In <editors>, <book title>, ..."
+    'inbook': 'incollection',
+}
+
+
 def print_entry(entry):
+    if entry.type == 'inbook' and 'booktitle' not in entry.fields:
+        # the book's title is often stored in `series` for @inbook entries
+        if 'series' in entry.fields:
+            entry.fields['booktitle'] = entry.fields.pop('series')
+    if entry.type != 'inbook' or 'booktitle' in entry.fields:
+        entry.type = STYLE_OVERRIDES.get(entry.type, entry.type)
     title = entry.fields['title']
     # link published papers to their DOI, and pre-prints to their url
     # (e.g. on arXiv); fall back to the other one if missing
@@ -212,90 +250,30 @@ if __name__ == "__main__":
         key=lambda e: e[1].fields['year'], reverse=True)
     _, entries = zip(*data)
 
+    # assign each entry to the first section whose predicate matches it
+    sections = [(heading, []) for heading, _ in SECTIONS]
+    skipped = []
+    for entry in entries:
+        for (_, pred), (_, members) in zip(SECTIONS, sections):
+            if pred(entry):
+                members.append(entry)
+                break
+        else:
+            skipped.append(entry)
+
     with open('pubs.md', 'w', encoding='utf8') as md:
-        md.write('**Pre-prints**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type != 'article':
-                continue
-            journal = entry.fields.get('journal', '').lower()
-            if any(venue in journal for venue in PREPRINT_VENUES):
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
+        for i, (heading, members) in enumerate(sections):
+            md.write('%s**%s**\n' % ('\n' if i else '', heading))
+            for pub_index, entry in enumerate(members, 1):
+                md.write('%s. %s\n' % (pub_index, print_entry(entry)))
 
-        md.write('\n**Journal Papers**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type != 'article':
-                continue
-            journal = entry.fields.get('journal', '').lower()
-            if not any(venue in journal for venue in PREPRINT_VENUES):
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**Top-tier Conference Papers**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'conference' or \
-                    entry.type == 'inproceedings':
-                entry.type = 'inproceedings'  # override style
-                keywords = entry.fields.get('keywords', '').upper()
-                if "TOP_CONF" in keywords:
-                    pub_index += 1
-                    text = print_entry(entry)
-                    md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**Conference Papers**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'conference' or \
-                    entry.type == 'inproceedings':
-                entry.type = 'inproceedings'  # override style
-                keywords = entry.fields.get('keywords', '').upper()
-                if "TOP_CONF" not in keywords:
-                    pub_index += 1
-                    text = print_entry(entry)
-                    md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**Books**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'book':
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**Book Chapters**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'incollection':
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**Proceedings / Edited Books**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'proceedings':
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**Miscellaneous**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'periodical':
-                entry.type = 'article'  # override style
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
-
-        md.write('\n**PhD Thesis**\n')
-        pub_index = 0
-        for entry in entries:
-            if entry.type == 'phdthesis':
-                pub_index += 1
-                text = print_entry(entry)
-                md.write('%s. %s\n' % (pub_index, text))
+    # short report
+    width = max(len(heading) for heading, _ in sections)
+    print('\nWrote pubs.md:')
+    for heading, members in sections:
+        print('  %-*s %4d' % (width, heading, len(members)))
+    print('  %-*s %4d' % (width, 'Total', len(entries) - len(skipped)))
+    print('  %-*s %4d' % (width, 'Skipped', len(skipped)))
+    for entry in skipped:
+        print('    - %s (@%s): %s' % (entry.key, entry.type,
+                                      entry.fields.get('title', '?')))
